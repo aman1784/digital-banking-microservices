@@ -1,0 +1,12 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  cloud:
+    config:
+      server:
+        git:
+          uri: file://D:/AMAN_KUMAR_SETH_8184640__digital-banking-project/config-repo
