@@ -9,4 +9,4 @@ spring:
     config:
       server:
         git:
-          uri: file://D:/AMAN_KUMAR_SETH_8184640__digital-banking-project/config-repo
+          uri: file://D:/config-repo
