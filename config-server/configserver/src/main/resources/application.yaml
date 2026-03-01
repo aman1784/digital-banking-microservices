@@ -9,4 +9,4 @@ spring:
     config:
       server:
         git:
-          uri: file://D:/config-repo
+          uri: https://github.com/aman1784/central-config-repo
