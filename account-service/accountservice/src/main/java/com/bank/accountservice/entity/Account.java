@@ -33,6 +33,6 @@ public class Account {
     @Enumerated(EnumType.STRING)
     private AccountStatus status;
 
-    @Column(name = "is_frozen")
+    @Column(name = "is_frozen", nullable = false)
     private boolean frozen = false;
 }
