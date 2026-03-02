@@ -1,10 +1,12 @@
 package com.bank.transactionservice.kafka;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class TransactionEventProducer {
 
     private final KafkaTemplate<String, TransactionEvent> kafkaTemplate;
@@ -18,18 +20,12 @@ public class TransactionEventProducer {
             SendResult<String, TransactionEvent> result =
                     kafkaTemplate.send("transaction-events", event).get();
 
-            System.out.println("Partition: " + result.getRecordMetadata().partition());
-            System.out.println("Offset: " + result.getRecordMetadata().offset());
-            kafkaTemplate
-                    .send("transaction-events", event)
-                    .get(); // wait for broker acknowledgment
-
-
-
-            System.out.println("Kafka event published successfully: " + event);
+            log.info("[TransactionEventProducer][Partition]: {}", result.getRecordMetadata().partition());
+            log.info("[TransactionEventProducer][Offset]: {}", result.getRecordMetadata().offset());
+            log.info("[TransactionEventProducer][Kafka event published successfully]: {}", event);
 
         } catch (Exception e) {
-            System.err.println("Failed to publish Kafka event: " + e.getMessage());
+            log.error("[TransactionEventProducer][Failed to publish Kafka event]: {}", e.getMessage());
         }
     }
 }
