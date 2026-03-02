@@ -21,4 +21,13 @@ public class JwtUtil {
                 .getPayload()
                 .getSubject();
     }
+
+    public List<String> extractRoles(String token) {
+        return Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(secret.getBytes()))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("roles", List.class);
+    }
 }
