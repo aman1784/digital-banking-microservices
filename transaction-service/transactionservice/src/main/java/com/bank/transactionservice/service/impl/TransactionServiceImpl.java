@@ -177,10 +177,10 @@ public class TransactionServiceImpl implements TransactionService {
                 )
         );
 
-        if (ex.getMessage().contains("400")){
+        if (ex.getMessage() != null && ex.getMessage().contains("400")){
             throw new InsufficientBalanceException("Insufficient balance or account inactive");
         }
-        if (ex.getMessage().contains("403")){
+        if (ex.getMessage() != null && ex.getMessage().contains("403")){
             throw new UnauthorizedAccountAccessException("Account not found or inactive");
         }
         throw new AccountServiceUnavailableException("Account service temporarily unavailable. Please try again later.");
@@ -220,10 +220,10 @@ public class TransactionServiceImpl implements TransactionService {
                 )
         );
 
-        if (ex.getMessage().contains("400")){
+        if (ex.getMessage() != null && ex.getMessage().contains("400")){
             throw new InsufficientBalanceException("Insufficient balance or account inactive");
         }
-        if (ex.getMessage().contains("403")){
+        if (ex.getMessage() != null && ex.getMessage().contains("403")){
             throw new UnauthorizedAccountAccessException("Account not found or inactive");
         }
         throw new AccountServiceUnavailableException("Account service temporarily unavailable. Please try again later.");
