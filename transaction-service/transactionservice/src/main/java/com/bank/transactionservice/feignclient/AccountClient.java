@@ -13,11 +13,9 @@ public interface AccountClient {
 
     @PostMapping("/api/v1/accounts/{id}/deposit")
     void deposit(@PathVariable("id") Long id,
-                 @RequestParam BigDecimal amount,
-                 @RequestHeader("X-User-Name") String username);
+                 @RequestParam BigDecimal amount);
 
     @PostMapping("/api/v1/accounts/{id}/withdraw")
     void withdraw(@PathVariable("id") Long id,
-                  @RequestParam BigDecimal amount,
-                  @RequestHeader("X-User-Name") String username);
+                  @RequestParam BigDecimal amount);
 }

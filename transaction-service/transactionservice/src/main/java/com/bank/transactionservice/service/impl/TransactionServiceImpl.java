@@ -37,7 +37,7 @@ public class TransactionServiceImpl implements TransactionService {
     @CircuitBreaker(name = "accountServiceCB", fallbackMethod = "depositFallback")
     public void processDeposit(Long accountId, BigDecimal amount, String username) {
 
-        accountClient.deposit(accountId, amount, username);
+        accountClient.deposit(accountId, amount);
 
         // Before Kafka
 //        repository.save(Transaction.builder()
@@ -76,7 +76,7 @@ public class TransactionServiceImpl implements TransactionService {
     @CircuitBreaker(name = "accountServiceCB", fallbackMethod = "withdrawFallback")
     public void processWithdraw(Long accountId, BigDecimal amount, String username) {
 
-            accountClient.withdraw(accountId, amount, username);
+            accountClient.withdraw(accountId, amount);
 
         // Before Kafka
 //            repository.save(Transaction.builder()
