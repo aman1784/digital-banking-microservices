@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter {
 
@@ -40,11 +42,13 @@ public class JwtAuthenticationFilter implements GlobalFilter {
         try {
             // Extract username from token
             String username = jwtUtil.extractUsername(token);
+            List<String> roles = jwtUtil.extractRoles(token);
 
             // Add username as header to downstream services
             ServerHttpRequest mutatedRequest = exchange.getRequest()
                     .mutate()
                     .header("X-User-Name", username)
+                    .header("X-User-Roles", String.join(",", roles)) // e.g., "ADMIN,USER"
                     .build();
             // Forward modified request
             return chain.filter(exchange.mutate().request(mutatedRequest).build());

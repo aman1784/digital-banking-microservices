@@ -13,4 +13,5 @@ public interface AccountService {
     void withdraw(Long accountId, BigDecimal amount, String username);
     BalanceResponse getBalance(Long accountId, String username);
     void freezeAccount(Long id);
+    void unfreezeAccount(Long id);
 }

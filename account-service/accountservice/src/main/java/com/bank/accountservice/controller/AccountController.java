@@ -6,12 +6,10 @@ import com.bank.accountservice.entity.Account;
 import com.bank.accountservice.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -48,7 +46,7 @@ public class AccountController {
     }
 
     @PutMapping("/admin/accounts/{id}/freeze")
-    @PostAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> freezeAccount(@PathVariable Long id) {
         accountService.freezeAccount(id);
         return ResponseEntity.ok("Account frozen successfully");
@@ -57,7 +55,7 @@ public class AccountController {
     @PutMapping("/admin/accounts/{id}/unfreeze")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> unfreezeAccount(@PathVariable Long id) {
-        // accountService.unfreezeAccount(id);
+         accountService.unfreezeAccount(id);
         return ResponseEntity.ok("Account unfrozen successfully");
     }
 }

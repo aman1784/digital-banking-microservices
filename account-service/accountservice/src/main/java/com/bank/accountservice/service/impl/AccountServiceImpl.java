@@ -78,8 +78,25 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public void freezeAccount(Long id) {
-        return;
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Account not found with ID: " + id));
+
+        account.setStatus(AccountStatus.FROZEN); // Assuming status is mapped as a String or Enum
+        account.setFrozen(true);
+        accountRepository.save(account);
+    }
+
+    @Override
+    @Transactional
+    public void unfreezeAccount(Long id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Account not found with ID: " + id));
+
+        account.setStatus(AccountStatus.ACTIVE);
+        account.setFrozen(false);
+        accountRepository.save(account);
     }
 
 
