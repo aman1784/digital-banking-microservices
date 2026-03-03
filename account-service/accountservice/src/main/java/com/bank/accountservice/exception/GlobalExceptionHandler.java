@@ -51,4 +51,17 @@ public class GlobalExceptionHandler {
         ApiError apiError = new ApiError(LocalDateTime.now(), HttpStatus.FORBIDDEN.value(), HttpStatus.FORBIDDEN.getReasonPhrase(), "You do not have the required permissions to perform this action.");
         return new ResponseEntity<>(apiError, HttpStatus.FORBIDDEN);
     }
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<ApiError> handleAccountNotFoundException(AccountNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(
+                        LocalDateTime.now(),
+                        HttpStatus.NOT_FOUND.value(),
+                        HttpStatus.NOT_FOUND.getReasonPhrase(),
+                        ex.getMessage() // This injects "Account not found with ID: X"
+                ));
+    }
 }

@@ -5,6 +5,7 @@ import com.bank.accountservice.dto.CreateAccountRequest;
 import com.bank.accountservice.entity.Account;
 import com.bank.accountservice.enums.AccountStatus;
 import com.bank.accountservice.enums.AccountType;
+import com.bank.accountservice.exception.AccountNotFoundException;
 import com.bank.accountservice.exception.InsufficientBalanceException;
 import com.bank.accountservice.exception.UnauthorizedAccountAccessException;
 import com.bank.accountservice.repository.AccountRepository;
@@ -55,7 +56,7 @@ public class AccountServiceImpl implements AccountService {
         int updated = accountRepository.withdrawIfSufficient(accountId, amount, username);
 
         if (updated == 0) {
-            throw new InsufficientBalanceException("Insufficient balance or account inactive");
+            throw new UnauthorizedAccountAccessException("Insufficient balance or account inactive");
         }
     }
 
@@ -81,7 +82,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void freezeAccount(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found with ID: " + id));
+                .orElseThrow(() -> new AccountNotFoundException("Account not found with ID: " + id));
 
         account.setStatus(AccountStatus.FROZEN); // Assuming status is mapped as a String or Enum
         account.setFrozen(true);
@@ -92,7 +93,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void unfreezeAccount(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found with ID: " + id));
+                .orElseThrow(() -> new AccountNotFoundException("Account not found with ID: " + id));
 
         account.setStatus(AccountStatus.ACTIVE);
         account.setFrozen(false);
