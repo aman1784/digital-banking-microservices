@@ -39,10 +39,13 @@ class TransactionControllerTest {
         // Mock the service to do nothing (since it returns void)
         doNothing().when(transactionService).processDeposit(anyLong(), any(BigDecimal.class), anyString());
 
+        // Create the JSON payload string
+        String jsonPayload = "{\"amount\": 100.00}";
+
         // Act & Assert
         mockMvc.perform(post("/api/v1/transactions/{accountId}/deposit", accountId)
                         .header("X-User-Name", username)
-                        .param("amount", amount.toString())
+                        .content(jsonPayload)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Transaction completed"));
@@ -58,10 +61,13 @@ class TransactionControllerTest {
         // Mock the service
         doNothing().when(transactionService).processWithdraw(anyLong(), any(BigDecimal.class), anyString());
 
+        // Create the JSON payload string
+        String jsonPayload = "{\"amount\": 50.00}";
+
         // Act & Assert
         mockMvc.perform(post("/api/v1/transactions/{accountId}/withdraw", accountId)
                         .header("X-User-Name", username)
-                        .param("amount", amount.toString())
+                        .content(jsonPayload)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Transaction completed"));
