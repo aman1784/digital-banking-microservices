@@ -1,5 +1,6 @@
 package com.bank.transactionservice.controller;
 
+import com.bank.transactionservice.dto.DepositRequest;
 import com.bank.transactionservice.dto.TransactionResponse;
 import com.bank.transactionservice.dto.WithdrawRequest;
 import com.bank.transactionservice.service.TransactionService;
@@ -7,7 +8,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -24,9 +24,8 @@ public class TransactionController {
     public ResponseEntity<String> deposit(
             @RequestHeader("X-User-Name") String username,
             @PathVariable Long accountId,
-            @RequestParam BigDecimal amount) {
-
-        service.processDeposit(accountId, amount, username);
+            @RequestBody @Valid DepositRequest request) {
+        service.processDeposit(accountId, request.amount(), username);
         return ResponseEntity.ok("Transaction completed");
     }
 
