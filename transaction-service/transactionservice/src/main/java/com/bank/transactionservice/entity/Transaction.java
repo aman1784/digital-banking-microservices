@@ -33,6 +33,7 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionStatus status;
 
+    @Column(columnDefinition = "TEXT")
     private String failureReason;
 
     private LocalDateTime createdAt;

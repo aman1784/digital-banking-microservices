@@ -1,7 +1,9 @@
 package com.bank.transactionservice.controller;
 
 import com.bank.transactionservice.dto.TransactionResponse;
+import com.bank.transactionservice.dto.WithdrawRequest;
 import com.bank.transactionservice.service.TransactionService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,9 +34,9 @@ public class TransactionController {
     public ResponseEntity<String> withdraw(
             @RequestHeader("X-User-Name") String username,
             @PathVariable Long accountId,
-            @RequestParam BigDecimal amount) {
+            @RequestBody @Valid WithdrawRequest request) {
 
-        service.processWithdraw(accountId, amount, username);
+        service.processWithdraw(accountId, request.amount(), username);
         return ResponseEntity.ok("Transaction completed");
     }
 
