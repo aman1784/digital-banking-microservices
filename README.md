@@ -151,7 +151,7 @@ This simulates real-world async banking notifications.
 * Kafka (Docker)
 * Zipkin (Docker)
 * MySQL
-* Gradle
+* Maven
 
 ---
 
@@ -162,7 +162,7 @@ This simulates real-world async banking notifications.
 * Java 21
 * Docker Desktop
 * MySQL running locally
-* Gradle (or use wrapper)
+* Maven
 
 ---
 
