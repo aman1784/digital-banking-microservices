@@ -5,14 +5,17 @@ import com.bank.accountservice.dto.CreateAccountRequest;
 import com.bank.accountservice.entity.Account;
 import com.bank.accountservice.service.AccountService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
+@Validated // Enables method-level validation for @RequestParam
 public class AccountController {
 
     private final AccountService accountService;
@@ -29,13 +32,17 @@ public class AccountController {
     }
 
     @PostMapping("/{id}/deposit")
-    public ResponseEntity<String> deposit(@RequestHeader("X-User-Name") String username, @PathVariable Long id, @RequestParam BigDecimal amount) {
+    public ResponseEntity<String> deposit(@RequestHeader("X-User-Name") String username,
+                                          @PathVariable Long id,
+                                          @RequestParam @Positive(message = "Amount must be greater than zero") BigDecimal amount) {
         accountService.deposit(id, amount, username);
         return ResponseEntity.ok("Deposit successful");
     }
 
     @PostMapping("/{id}/withdraw")
-    public ResponseEntity<String> withdraw(@RequestHeader("X-User-Name") String username, @PathVariable Long id, @RequestParam BigDecimal amount) {
+    public ResponseEntity<String> withdraw(@RequestHeader("X-User-Name") String username,
+                                           @PathVariable Long id,
+                                           @RequestParam @Positive(message = "Amount must be greater than zero") BigDecimal amount) {
         accountService.withdraw(id, amount, username);
         return ResponseEntity.ok("Withdraw successful");
     }
