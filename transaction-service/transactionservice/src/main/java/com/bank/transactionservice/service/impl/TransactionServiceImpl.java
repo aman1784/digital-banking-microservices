@@ -116,21 +116,15 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public List<TransactionResponse> getUserTransactions(String username) {
-
-        return repository.findByUsername(username)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
+    public Page<TransactionResponse> getUserTransactions(String username, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return repository.findByUsername(username, pageable).map(this::mapToResponse);
     }
 
     @Override
-    public List<TransactionResponse> getAccountTransactions(Long accountId, String username) {
-
-        return repository.findByAccountIdAndUsername(accountId, username)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
+    public Page<TransactionResponse> getAccountTransactions(Long accountId, String username, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return repository.findByAccountIdAndUsername(accountId, username, pageable).map(this::mapToResponse);
     }
 
     private TransactionResponse mapToResponse(Transaction tx) {
