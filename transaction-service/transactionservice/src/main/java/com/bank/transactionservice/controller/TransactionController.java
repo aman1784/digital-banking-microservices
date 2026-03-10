@@ -5,6 +5,7 @@ import com.bank.transactionservice.dto.TransactionResponse;
 import com.bank.transactionservice.dto.WithdrawRequest;
 import com.bank.transactionservice.service.TransactionService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,17 +41,21 @@ public class TransactionController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<TransactionResponse>> getMyTransactions(@RequestHeader("X-User-Name") String username) {
-        return ResponseEntity.ok(service.getUserTransactions(username));
+    public ResponseEntity<Page<TransactionResponse>> getMyTransactions(
+            @RequestHeader("X-User-Name") String username,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return ResponseEntity.ok(service.getUserTransactions(username, page, size));
     }
 
     @GetMapping("/account/{accountId}")
-    public ResponseEntity<List<TransactionResponse>> getAccountTransactions(
+    public ResponseEntity<Page<TransactionResponse>> getAccountTransactions(
             @RequestHeader("X-User-Name") String username,
-            @PathVariable Long accountId) {
-        System.out.println("Username: " + username);
-        return ResponseEntity.ok(
-                service.getAccountTransactions(accountId, username)
-        );
+            @PathVariable Long accountId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return ResponseEntity.ok(service.getAccountTransactions(accountId, username, page, size));
     }
 }

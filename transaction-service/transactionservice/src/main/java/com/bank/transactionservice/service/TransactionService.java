@@ -1,9 +1,9 @@
 package com.bank.transactionservice.service;
 
 import com.bank.transactionservice.dto.TransactionResponse;
+import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 public interface TransactionService {
 
@@ -11,7 +11,7 @@ public interface TransactionService {
 
     void processWithdraw(Long accountId, BigDecimal amount, String username);
 
-    List<TransactionResponse> getUserTransactions(String username);
+    Page<TransactionResponse> getUserTransactions(String username, int page, int size);
 
-    List<TransactionResponse> getAccountTransactions(Long accountId, String username);
+    Page<TransactionResponse> getAccountTransactions(Long accountId, String username, int page, int size);
 }

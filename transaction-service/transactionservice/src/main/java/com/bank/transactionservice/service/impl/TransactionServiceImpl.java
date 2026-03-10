@@ -12,12 +12,16 @@ import com.bank.transactionservice.kafka.TransactionEvent;
 import com.bank.transactionservice.kafka.TransactionEventProducer;
 import com.bank.transactionservice.repository.TransactionRepository;
 import com.bank.transactionservice.service.TransactionService;
+import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
