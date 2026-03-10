@@ -36,14 +36,6 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     """)
     int deposit(@Param("accountId") Long accountId, @Param("amount") BigDecimal amount, @Param("username") String username);
 
-//    @Query("""
-//            SELECT a.balance
-//            FROM Account a
-//            WHERE a.id = :accountId
-//            AND a.ownerUsername = :username
-//            AND a.status = com.bank.accountservice.enums.AccountStatus.ACTIVE
-//        """)
-//    Optional<BigDecimal> showBalance(@Param("username") String username, @Param("accountId") Long accountId);
 
     Optional<Account> findByIdAndOwnerUsername(Long id, String ownerUsername);
 }
