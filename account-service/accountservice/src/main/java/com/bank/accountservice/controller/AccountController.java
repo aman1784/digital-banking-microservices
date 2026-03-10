@@ -1,5 +1,6 @@
 package com.bank.accountservice.controller;
 
+import com.bank.accountservice.dto.AccountResponse;
 import com.bank.accountservice.dto.BalanceResponse;
 import com.bank.accountservice.dto.CreateAccountRequest;
 import com.bank.accountservice.entity.Account;
@@ -12,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -64,5 +66,10 @@ public class AccountController {
     public ResponseEntity<String> unfreezeAccount(@PathVariable Long id) {
          accountService.unfreezeAccount(id);
         return ResponseEntity.ok("Account unfrozen successfully");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<AccountResponse>> getAllAccountsForUser(@RequestHeader("X-User-Name") String username) {
+        return ResponseEntity.ok(accountService.getAllAccountsForUser(username));
     }
 }

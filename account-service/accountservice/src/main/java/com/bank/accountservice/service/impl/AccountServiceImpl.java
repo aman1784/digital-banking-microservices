@@ -1,5 +1,6 @@
 package com.bank.accountservice.service.impl;
 
+import com.bank.accountservice.dto.AccountResponse;
 import com.bank.accountservice.dto.BalanceResponse;
 import com.bank.accountservice.dto.CreateAccountRequest;
 import com.bank.accountservice.entity.Account;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -98,6 +100,24 @@ public class AccountServiceImpl implements AccountService {
         account.setStatus(AccountStatus.ACTIVE);
         account.setFrozen(false);
         accountRepository.save(account);
+    }
+
+    @Override
+    public List<AccountResponse> getAllAccountsForUser(String username) {
+        List<Account> accountList = accountRepository.findByOwnerUsername(username);
+
+        if (accountList.isEmpty()) {
+            throw new AccountNotFoundException("No Account(s) found...Create an account");
+        }
+
+        return accountList.stream()
+                .map(account -> AccountResponse.builder()
+                        .ownerName(account.getOwnerUsername())
+                        .accountType(account.getAccountType())
+                        .amount(account.getBalance())
+                        .accountStatus(account.getStatus())
+                        .build())
+                .toList();
     }
 
 
