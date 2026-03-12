@@ -12,7 +12,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // <--- CRITICAL: This enables @PreAuthorize
+@EnableMethodSecurity // <--- This enables @PreAuthorize
 public class SecurityConfig {
 
 
