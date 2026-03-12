@@ -7,6 +7,8 @@ import com.bank.transactionservice.enums.TransactionType;
 import com.bank.transactionservice.exception.AccountServiceUnavailableException;
 import com.bank.transactionservice.exception.InsufficientBalanceException;
 import com.bank.transactionservice.exception.UnauthorizedAccountAccessException;
+import com.bank.transactionservice.executorService.DepositExecutorService;
+import com.bank.transactionservice.executorService.WithdrawExecutorService;
 import com.bank.transactionservice.feignclient.AccountClient;
 import com.bank.transactionservice.kafka.TransactionEvent;
 import com.bank.transactionservice.kafka.TransactionEventProducer;
@@ -23,86 +25,77 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository repository;
     private final AccountClient accountClient;
     private final TransactionEventProducer producer;
+    private final WithdrawExecutorService withdrawExecutorService;
+    private final DepositExecutorService depositExecutorService;
 
     public TransactionServiceImpl(TransactionRepository repository,
-                                  AccountClient accountClient, TransactionEventProducer producer) {
+                                  AccountClient accountClient,
+                                  TransactionEventProducer producer,
+                                  WithdrawExecutorService withdrawExecutorService,
+                                  DepositExecutorService depositExecutorService) {
         this.repository = repository;
         this.accountClient = accountClient;
         this.producer = producer;
+        this.withdrawExecutorService = withdrawExecutorService;
+        this.depositExecutorService = depositExecutorService;
     }
 
     @Override
-    @CircuitBreaker(name = "accountServiceCB", fallbackMethod = "depositFallback")
     public void processDeposit(Long accountId, BigDecimal amount, String username) {
 
-        accountClient.deposit(accountId, amount);
+        // 1. Save as PENDING
+        Transaction transaction = repository.save(
+                Transaction.builder()
+                        .accountId(accountId)
+                        .username(username)
+                        .type(TransactionType.DEPOSIT)
+                        .amount(amount)
+                        .status(TransactionStatus.PENDING)
+                        .createdAt(LocalDateTime.now())
+                        .build());
 
-        // After Kafka
-        Transaction saved = repository.save(Transaction.builder()
-                .accountId(accountId)
-                .username(username)
-                .type(TransactionType.DEPOSIT)
-                .amount(amount)
-                .status(TransactionStatus.SUCCESS)
-                .createdAt(LocalDateTime.now())
-                .build());
+        log.info("[TransactionServiceImpl][processDeposit] Pending Transaction with id {} has been created", transaction.getId());
 
-        producer.publish(
-                new TransactionEvent(
-                        saved.getId(),
-                        saved.getAccountId(),
-                        saved.getUsername(),
-                        saved.getType().name(),
-                        saved.getStatus().name(),
-                        saved.getAmount(),
-                        saved.getCreatedAt()
-                )
+        depositExecutorService.depositInternal(
+                transaction.getId(),
+                accountId,
+                amount,
+                username
         );
     }
 
     @Override
-    @CircuitBreaker(name = "accountServiceCB", fallbackMethod = "withdrawFallback")
     public void processWithdraw(Long accountId, BigDecimal amount, String username) {
 
-            accountClient.withdraw(accountId, amount);
-
-        // Before Kafka
-//            repository.save(Transaction.builder()
-//                    .accountId(accountId)
-//                    .username(username)
-//                    .type(TransactionType.WITHDRAW)
-//                    .amount(amount)
-//                    .status(TransactionStatus.SUCCESS)
-//                    .createdAt(LocalDateTime.now())
-//                    .build());
-
-        // After Kafka
-        Transaction saved = repository.save(Transaction.builder()
-                .accountId(accountId)
-                .username(username)
-                .type(TransactionType.WITHDRAW)
-                .amount(amount)
-                .status(TransactionStatus.SUCCESS)
-                .createdAt(LocalDateTime.now())
-                .build());
-
-        producer.publish(
-                new TransactionEvent(
-                        saved.getId(),
-                        saved.getAccountId(),
-                        saved.getUsername(),
-                        saved.getType().name(),
-                        saved.getStatus().name(),
-                        saved.getAmount(),
-                        saved.getCreatedAt()
-                )
+        // 1. Save as PENDING
+        Transaction transaction = repository.save(
+                Transaction.builder()
+                        .accountId(accountId)
+                        .username(username)
+                        .type(TransactionType.WITHDRAW)
+                        .amount(amount)
+                        .status(TransactionStatus.PENDING)
+                        .createdAt(LocalDateTime.now())
+                        .build()
         );
+
+        log.info("[TransactionServiceImpl][processWithdraw] Pending Transaction with id {} has been created", transaction.getId());
+
+        // 2️. Call circuit breaker protected method
+        withdrawExecutorService.withdrawInternal(
+                transaction.getId(),
+                accountId,
+                amount,
+                username
+        );
+
     }
 
     @Override
@@ -131,80 +124,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
 
-    public void depositFallback(Long accountId, BigDecimal amount, String username, Throwable ex) {
 
 
-        Transaction saved = repository.save(Transaction.builder()
-                .accountId(accountId)
-                .username(username)
-                .type(TransactionType.DEPOSIT)
-                .amount(amount)
-                .status(TransactionStatus.FAILED)
-                .failureReason(ex.getMessage())
-                .createdAt(LocalDateTime.now())
-                .build());
 
-        producer.publish(
-                new TransactionEvent(
-                        saved.getId(),
-                        saved.getAccountId(),
-                        saved.getUsername(),
-                        saved.getType().name(),
-                        saved.getStatus().name(),
-                        saved.getAmount(),
-                        saved.getCreatedAt()
-                )
-        );
-
-        if (ex.getMessage() != null && ex.getMessage().contains("400")){
-            throw new InsufficientBalanceException("Insufficient balance or account inactive");
-        }
-        if (ex.getMessage() != null && ex.getMessage().contains("403")){
-            throw new UnauthorizedAccountAccessException("Account not found or inactive");
-        }
-        throw new AccountServiceUnavailableException("Account service temporarily unavailable. Please try again later.");
-    }
-
-    public void withdrawFallback(Long accountId, BigDecimal amount, String username, Throwable ex) {
-
-//        repository.save(Transaction.builder()
-//                .accountId(accountId)
-//                .username(username)
-//                .type(TransactionType.WITHDRAW)
-//                .amount(amount)
-//                .status(TransactionStatus.FAILED)
-//                .failureReason(ex.getMessage())
-//                .createdAt(LocalDateTime.now())
-//                .build());
-
-        Transaction saved = repository.save(Transaction.builder()
-                .accountId(accountId)
-                .username(username)
-                .type(TransactionType.WITHDRAW)
-                .amount(amount)
-                .status(TransactionStatus.FAILED)
-                .failureReason(ex.getMessage())
-                .createdAt(LocalDateTime.now())
-                .build());
-
-        producer.publish(
-                new TransactionEvent(
-                        saved.getId(),
-                        saved.getAccountId(),
-                        saved.getUsername(),
-                        saved.getType().name(),
-                        saved.getStatus().name(),
-                        saved.getAmount(),
-                        saved.getCreatedAt()
-                )
-        );
-
-        if (ex.getMessage() != null && ex.getMessage().contains("400")){
-            throw new InsufficientBalanceException("Insufficient balance or account inactive");
-        }
-        if (ex.getMessage() != null && ex.getMessage().contains("403")){
-            throw new UnauthorizedAccountAccessException("Account not found or inactive");
-        }
-        throw new AccountServiceUnavailableException("Account service temporarily unavailable. Please try again later.");
-    }
 }
