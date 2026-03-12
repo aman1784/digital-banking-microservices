@@ -43,16 +43,6 @@ public class TransactionServiceImpl implements TransactionService {
 
         accountClient.deposit(accountId, amount);
 
-        // Before Kafka
-//        repository.save(Transaction.builder()
-//                .accountId(accountId)
-//                .username(username)
-//                .type(TransactionType.DEPOSIT)
-//                .amount(amount)
-//                .status(TransactionStatus.SUCCESS)
-//                .createdAt(LocalDateTime.now())
-//                .build());
-
         // After Kafka
         Transaction saved = repository.save(Transaction.builder()
                 .accountId(accountId)
@@ -143,15 +133,6 @@ public class TransactionServiceImpl implements TransactionService {
 
     public void depositFallback(Long accountId, BigDecimal amount, String username, Throwable ex) {
 
-//        repository.save(Transaction.builder()
-//                .accountId(accountId)
-//                .username(username)
-//                .type(TransactionType.DEPOSIT)
-//                .amount(amount)
-//                .status(TransactionStatus.FAILED)
-//                .failureReason(ex.getMessage())
-//                .createdAt(LocalDateTime.now())
-//                .build());
 
         Transaction saved = repository.save(Transaction.builder()
                 .accountId(accountId)
