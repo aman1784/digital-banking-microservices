@@ -58,7 +58,7 @@ public class AccountServiceImpl implements AccountService {
         int updated = accountRepository.withdrawIfSufficient(accountId, amount, username);
 
         if (updated == 0) {
-            throw new UnauthorizedAccountAccessException("Insufficient balance or account inactive");
+            throw new UnauthorizedAccountAccessException("Unauthorized Access or Account Inactive or Insufficient Balance");
         }
     }
 
