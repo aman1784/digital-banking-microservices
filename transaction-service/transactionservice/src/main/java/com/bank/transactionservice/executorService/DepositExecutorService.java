@@ -37,7 +37,7 @@ public class DepositExecutorService {
                                 String username){
         log.info("Calling account-service deposit accountId={} amount={}", accountId, amount);
 
-        accountClient.withdraw(accountId, amount);
+        accountClient.deposit(accountId, amount);
 
         Transaction transaction = repository.findById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found"));

@@ -4,22 +4,22 @@ import com.bank.transactionservice.dto.TransactionResponse;
 import com.bank.transactionservice.entity.Transaction;
 import com.bank.transactionservice.enums.TransactionStatus;
 import com.bank.transactionservice.enums.TransactionType;
-import com.bank.transactionservice.exception.InsufficientBalanceException;
-import com.bank.transactionservice.exception.UnauthorizedAccountAccessException;
+import com.bank.transactionservice.executorService.DepositExecutorService;
+import com.bank.transactionservice.executorService.WithdrawExecutorService;
 import com.bank.transactionservice.feignclient.AccountClient;
-import com.bank.transactionservice.kafka.TransactionEvent;
 import com.bank.transactionservice.kafka.TransactionEventProducer;
 import com.bank.transactionservice.repository.TransactionRepository;
 import com.bank.transactionservice.service.impl.TransactionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,162 +29,119 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@DataJpaTest // Loads ONLY the JPA/H2 database slice, extremely fast!
-@ActiveProfiles("test") // Uses application-test.yml
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(MockitoExtension.class) // Initializes Mockito annotations
 class TransactionServiceImplTest {
 
-    @Autowired
-    private TransactionRepository transactionRepository; // Real H2-backed repository
+    @Mock
+    private TransactionRepository repository;
 
     @Mock
-    private AccountClient accountClient; // Mocked Feign Client
+    private AccountClient accountClient;
 
     @Mock
-    private TransactionEventProducer producer; // Mocked Kafka Producer
+    private TransactionEventProducer producer;
 
+    @Mock
+    private WithdrawExecutorService withdrawExecutorService;
+
+    @Mock
+    private DepositExecutorService depositExecutorService;
+
+    @InjectMocks
     private TransactionServiceImpl transactionService;
+
+    private Transaction testTransaction;
+    private final String TEST_USER = "aman";
+    private final Long TEST_ACCOUNT_ID = 1L;
+    private final BigDecimal TEST_AMOUNT = new BigDecimal("500.00");
 
     @BeforeEach
     void setUp() {
-        // Clear DB before each test
-        transactionRepository.deleteAll();
-        // Inject the real repo and mocked services into our Service implementation
-        transactionService = new TransactionServiceImpl(transactionRepository, accountClient, producer);
+
+        // Prepare a reusable transaction entity for our tests
+        testTransaction = Transaction.builder()
+                .id(100L)
+                .accountId(TEST_ACCOUNT_ID)
+                .username(TEST_USER)
+                .type(TransactionType.DEPOSIT)
+                .amount(TEST_AMOUNT)
+                .status(TransactionStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     @Test
     void processDeposit_Success() {
         // Arrange
-        Long accountId = 1L;
-        BigDecimal amount = new BigDecimal("500.00");
-        String username = "aman";
-
-        // Mock Feign call to do nothing (simulate success)
-        doNothing().when(accountClient).deposit(accountId, amount);
+        // When repository.save() is called, simply return the transaction that was passed into it.
+        // This handles both the initial PENDING save and the subsequent SUCCESS save.
+        when(repository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        transactionService.processDeposit(accountId, amount, username);
+        transactionService.processDeposit(TEST_ACCOUNT_ID, TEST_AMOUNT, TEST_USER);
 
-        // Assert 1: Verify DB State
-        List<Transaction> savedTransactions = transactionRepository.findAll();
-        assertEquals(1, savedTransactions.size());
+        // Assert
 
-        Transaction savedTx = savedTransactions.get(0);
-        assertEquals(TransactionType.DEPOSIT, savedTx.getType());
-        assertEquals(TransactionStatus.SUCCESS, savedTx.getStatus());
-        assertEquals(amount, savedTx.getAmount());
-        assertEquals(username, savedTx.getUsername());
-        assertNull(savedTx.getFailureReason());
-
-        // Assert 2: Verify Kafka Event was published
-        ArgumentCaptor<TransactionEvent> eventCaptor = ArgumentCaptor.forClass(TransactionEvent.class);
-        verify(producer, times(1)).publish(eventCaptor.capture());
-
-        TransactionEvent capturedEvent = eventCaptor.getValue();
-        assertEquals(savedTx.getId(), capturedEvent.transactionId());
-        assertEquals("SUCCESS", capturedEvent.status());
+        // 1. Verify repository.save() was called 1 (for PENDING)
+        verify(repository, times(1)).save(any(Transaction.class));
+        // 2. Verify depositExecutorService
+        verify(depositExecutorService, times(1)).depositInternal(any(), eq(TEST_ACCOUNT_ID), eq(TEST_AMOUNT), eq(TEST_USER));
     }
 
     @Test
     void processWithdraw_Success() {
         // Arrange
-        Long accountId = 2L;
-        BigDecimal amount = new BigDecimal("200.00");
-        String username = "vinod";
-
-        doNothing().when(accountClient).withdraw(accountId, amount);
+        when(repository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        transactionService.processWithdraw(accountId, amount, username);
+        transactionService.processWithdraw(TEST_ACCOUNT_ID, TEST_AMOUNT, TEST_USER);
 
         // Assert
-        List<Transaction> savedTransactions = transactionRepository.findAll();
-        assertEquals(1, savedTransactions.size());
-        assertEquals(TransactionType.WITHDRAW, savedTransactions.get(0).getType());
-        assertEquals(TransactionStatus.SUCCESS, savedTransactions.get(0).getStatus());
+        // Verify Feign client withdraw method was called
+        verify(repository, times(1)).save(any(Transaction.class));
+        verify(withdrawExecutorService, times(1)).withdrawInternal(any(), eq(TEST_ACCOUNT_ID), eq(TEST_AMOUNT), eq(TEST_USER));
 
-        verify(producer, times(1)).publish(any(TransactionEvent.class));
     }
 
     @Test
-    void withdrawFallback_InsufficientBalance_ThrowsExceptionAndSavesFailedTransaction() {
+    void getUserTransactions_ReturnsPagedResults() {
         // Arrange
-        Long accountId = 1L;
-        BigDecimal amount = new BigDecimal("10000.00");
-        String username = "aman";
-        // Simulate Feign throwing a 400 Bad Request exception
-        RuntimeException feignException = new RuntimeException("400 Bad Request: Insufficient balance");
+        int page = 0;
+        int size = 10;
+        Pageable pageable = PageRequest.of(page, size);
 
-        // Act & Assert Exception
-        InsufficientBalanceException thrown = assertThrows(
-                InsufficientBalanceException.class,
-                () -> transactionService.withdrawFallback(accountId, amount, username, feignException)
-        );
-
-        assertEquals("Insufficient balance or account inactive", thrown.getMessage());
-
-        // Assert DB State: Should have saved a FAILED transaction
-        List<Transaction> savedTransactions = transactionRepository.findAll();
-        assertEquals(1, savedTransactions.size());
-
-        Transaction failedTx = savedTransactions.get(0);
-        assertEquals(TransactionType.WITHDRAW, failedTx.getType());
-        assertEquals(TransactionStatus.FAILED, failedTx.getStatus());
-        assertEquals("400 Bad Request: Insufficient balance", failedTx.getFailureReason());
-
-        // Assert Kafka Producer: Should still publish the FAILED event
-        verify(producer, times(1)).publish(any(TransactionEvent.class));
-    }
-
-    @Test
-    void depositFallback_Unauthorized_ThrowsExceptionAndSavesFailedTransaction() {
-        // Arrange
-        Long accountId = 1L;
-        BigDecimal amount = new BigDecimal("100.00");
-        String username = "hacker";
-        // Simulate Feign throwing a 403 Forbidden exception
-        RuntimeException feignException = new RuntimeException("403 Forbidden");
-
-        // Act & Assert Exception
-        UnauthorizedAccountAccessException thrown = assertThrows(
-                UnauthorizedAccountAccessException.class,
-                () -> transactionService.depositFallback(accountId, amount, username, feignException)
-        );
-
-        assertEquals("Account not found or inactive", thrown.getMessage());
-
-        // Assert DB State
-        List<Transaction> savedTransactions = transactionRepository.findAll();
-        assertEquals(1, savedTransactions.size());
-        assertEquals(TransactionStatus.FAILED, savedTransactions.get(0).getStatus());
-        assertEquals("403 Forbidden", savedTransactions.get(0).getFailureReason());
-    }
-
-    @Test
-    void getUserTransactions_ReturnsMappedResponse() {
-        // Arrange: Pre-populate the H2 database
-        Transaction tx1 = Transaction.builder()
-                .accountId(1L).username("aman").type(TransactionType.DEPOSIT)
-                .amount(new BigDecimal("500")).status(TransactionStatus.SUCCESS).createdAt(LocalDateTime.now())
-                .build();
-        Transaction tx2 = Transaction.builder()
-                .accountId(1L).username("aman").type(TransactionType.WITHDRAW)
-                .amount(new BigDecimal("100")).status(TransactionStatus.SUCCESS).createdAt(LocalDateTime.now())
-                .build();
-        Transaction txOther = Transaction.builder()
-                .accountId(2L).username("other_user").type(TransactionType.DEPOSIT)
-                .amount(new BigDecimal("100")).status(TransactionStatus.SUCCESS).createdAt(LocalDateTime.now())
-                .build();
-
-        transactionRepository.saveAll(List.of(tx1, tx2, txOther));
+        // Create a fake page of transactions
+        Page<Transaction> transactionPage = new PageImpl<>(List.of(testTransaction));
+        when(repository.findByUsername(TEST_USER, pageable)).thenReturn(transactionPage);
 
         // Act
-        List<TransactionResponse> responses = transactionService.getUserTransactions("aman");
+        Page<TransactionResponse> result = transactionService.getUserTransactions(TEST_USER, page, size);
 
         // Assert
-        assertEquals(2, responses.size()); // Should only return "aman"s transactions
-        assertTrue(responses.stream().anyMatch(r -> r.type().equals("DEPOSIT")));
-        assertTrue(responses.stream().anyMatch(r -> r.type().equals("WITHDRAW")));
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(TEST_AMOUNT, result.getContent().get(0).amount());
+
+        // Verify repository method was called with the exact parameters
+        verify(repository, times(1)).findByUsername(TEST_USER, pageable);
+    }
+
+    @Test
+    void getAccountTransactions_ReturnsPagedResults() {
+        // Arrange
+        int page = 0;
+        int size = 5;
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Transaction> transactionPage = new PageImpl<>(List.of(testTransaction));
+        when(repository.findByAccountIdAndUsername(TEST_ACCOUNT_ID, TEST_USER, pageable)).thenReturn(transactionPage);
+
+        // Act
+        Page<TransactionResponse> result = transactionService.getAccountTransactions(TEST_ACCOUNT_ID, TEST_USER, page, size);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(TransactionType.DEPOSIT.name(), result.getContent().get(0).type());
     }
 }
