@@ -47,9 +47,9 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void createAccount_WhenValidRequest_ReturnAccount() {
+    void shouldCreateAccountWhenValidRequest() {
         // Arrange
-        CreateAccountRequest request = new CreateAccountRequest("SAVINGS", new BigDecimal("500.00"));
+        CreateAccountRequest request = new CreateAccountRequest(AccountType.SAVINGS.name(), new BigDecimal("500.00"));
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
         // Act
@@ -62,7 +62,7 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void deposit_WhenValidAccountAndAmount_CompletesSuccessfully() {
+    void shouldDepositWhenValidAccountAndAmount() {
         // Arrange: Simulate that the custom @Modifying query successfully updated 1 row
         when(accountRepository.deposit(1L, new BigDecimal("500.00"), TEST_USER)).thenReturn(1);
 
@@ -81,7 +81,7 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void withdraw_WhenSufficientBalance_CompletesSuccessfully() {
+    void shouldWithdrawWhenSufficientBalance() {
         // Arrange: Simulate sufficient balance and successful update
         when(accountRepository.withdrawIfSufficient(1L, new BigDecimal("200.00"), TEST_USER)).thenReturn(1);
 
@@ -90,17 +90,19 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void withdraw_WhenInsufficientBalance_ThrowsUnauthorizedException() {
+    void ShouldThrowUnauthorizedExceptionWhenWithdrawDuringInsufficientBalance() {
         // Arrange: Simulate insufficient balance (query returns 0 updated rows)
         when(accountRepository.withdrawIfSufficient(1L, new BigDecimal("2000.00"), TEST_USER)).thenReturn(0);
 
         // Act & Assert
         assertThrows(UnauthorizedAccountAccessException.class,
                 () -> accountService.withdraw(1L, new BigDecimal("2000.00"), TEST_USER));
+
+        verify(accountRepository, times(1)).withdrawIfSufficient(1L, new BigDecimal("2000.00"), TEST_USER);
     }
 
     @Test
-    void getBalance_WhenAccountExists_ReturnsBalanceResponse() {
+    void shouldReturnBalanceWhenAccountExists() {
         // Arrange
         when(accountRepository.findByIdAndOwnerUsername(1L, TEST_USER)).thenReturn(Optional.of(testAccount));
 
@@ -110,5 +112,15 @@ class AccountServiceImplTest {
         // Assert
         assertNotNull(response);
         assertEquals(new BigDecimal("1000.00"), response.balance());
+    }
+
+    @Test
+    void shouldThrowUnauthorizedAccountAccessExceptionWhenUserNameDoesNotMatch() { // verify this test method
+        // Arrange
+        when(accountRepository.findByIdAndOwnerUsername(1L, TEST_USER)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(UnauthorizedAccountAccessException.class,
+                () -> accountService.getBalance(1L, TEST_USER));
     }
 }
