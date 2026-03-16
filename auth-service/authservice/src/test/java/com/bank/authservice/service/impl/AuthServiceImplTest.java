@@ -59,7 +59,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void register_whenUserIsNew_shouldSucceed() {
+    void shouldRegisterUserWhenUserIsNew() {
         // Arrange: Define the input and how the mocks should behave
         RegisterRequest request = new RegisterRequest("abhishek", "password123");
 
@@ -76,7 +76,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void register_whenUserAlreadyExists_shouldThrowDuplicateUserException() {
+    void shouldThrowDuplicateUserExceptionWhenUserAlreadyExists() {
         // Arrange
         RegisterRequest request = new RegisterRequest("testuser", "password123");
         // Simulate that the user already exists in the database
@@ -90,7 +90,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void login_whenCredentialsValid_shouldReturnToken() {
+    void shouldReturnTokenWhenLoginCredentialsValid() {
         // Arrange
         LoginRequest request = new LoginRequest("testuser", "password123");
 
@@ -107,7 +107,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void login_whenPasswordInvalid_shouldThrowInvalidUserCredentialsException() {
+    void shouldThrowInvalidUserCredentialsExceptionWhenLoginPasswordInvalid() {
         // Arrange
         LoginRequest request = new LoginRequest("testuser", "wrongpassword");
 
