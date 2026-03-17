@@ -124,4 +124,60 @@ class AccountServiceImplTest {
         assertThrows(UnauthorizedAccountAccessException.class,
                 () -> accountService.getBalance(1L, TEST_USER));
     }
+
+    @Test
+    void shouldFreezeAccountSuccessfully() {
+        // Arrange
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(testAccount));
+
+        // Act
+        accountService.freezeAccount(1L);
+
+        // Assert
+        assertEquals(AccountStatus.FROZEN, testAccount.getStatus());
+        assertTrue(testAccount.isFrozen());
+        verify(accountRepository, times(1)).save(testAccount);
+    }
+
+    @Test
+    void shouldUnfreezeAccountSuccessfully() {
+        // Arrange
+        // Let's modify our test account to be frozen first
+        testAccount.setStatus(AccountStatus.FROZEN);
+        testAccount.setFrozen(true);
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(testAccount));
+
+        // Act
+        accountService.unfreezeAccount(1L);
+
+        // Assert
+        assertEquals(AccountStatus.ACTIVE, testAccount.getStatus());
+        assertFalse(testAccount.isFrozen());
+        verify(accountRepository, times(1)).save(testAccount);
+    }
+
+    @Test
+    void shouldReturnAllAccountsForUser() {
+        // Arrange
+        when(accountRepository.findByOwnerUsername(TEST_USER)).thenReturn(java.util.List.of(testAccount));
+
+        // Act
+        var responses = accountService.getAllAccountsForUser(TEST_USER);
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals(TEST_USER, responses.get(0).ownerName());
+        assertEquals(new BigDecimal("1000.00"), responses.get(0).amount());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUserHasNoAccounts() {
+        // Arrange
+        when(accountRepository.findByOwnerUsername(TEST_USER)).thenReturn(java.util.Collections.emptyList());
+
+        // Act & Assert
+        assertThrows(com.bank.accountservice.exception.AccountNotFoundException.class,
+                () -> accountService.getAllAccountsForUser(TEST_USER));
+    }
 }
