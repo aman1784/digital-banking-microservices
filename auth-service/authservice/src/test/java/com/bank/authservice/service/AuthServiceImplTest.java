@@ -1,15 +1,18 @@
-package com.bank.authservice.service.impl;
+package com.bank.authservice.service;
 
 import com.bank.authservice.dto.AuthResponse;
 import com.bank.authservice.dto.LoginRequest;
 import com.bank.authservice.dto.RegisterRequest;
+import com.bank.authservice.entity.RefreshToken;
 import com.bank.authservice.entity.Role;
 import com.bank.authservice.entity.User;
 import com.bank.authservice.exception.DuplicateUserExistsException;
 import com.bank.authservice.exception.InvalidUserCredentialsException;
+import com.bank.authservice.repository.RefreshTokenRepository;
 import com.bank.authservice.repository.RoleRepository;
 import com.bank.authservice.repository.UserRepository;
 import com.bank.authservice.security.JwtUtil;
+import com.bank.authservice.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +40,8 @@ class AuthServiceImplTest {
     private PasswordEncoder encoder;
     @Mock
     private JwtUtil jwtUtil;
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
 
     // @InjectMocks creates the actual service and injects the @Mocks into it
     @InjectMocks
@@ -90,20 +95,29 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void shouldReturnTokenWhenLoginCredentialsValid() {
+    void shouldReturnTokensWhenLoginCredentialsValid() {
         // Arrange
         LoginRequest request = new LoginRequest("testuser", "password123");
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(encoder.matches("password123", "encodedPassword")).thenReturn(true); // Passwords match
-        when(jwtUtil.generateToken(eq("testuser"), anyList())).thenReturn("mocked-jwt-token");
+        when(encoder.matches("password123", "encodedPassword")).thenReturn(true);
+        when(jwtUtil.generateToken(eq("testuser"), anyList())).thenReturn("mocked-access-token");
+        when(jwtUtil.generateRefreshToken("testuser")).thenReturn("mocked-refresh-token");
+        when(jwtUtil.getRefreshExpiration()).thenReturn(86400000L); // 24 hours
+
+        // When finding the existing token (returning empty means it's a new login)
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(new RefreshToken());
 
         // Act
         AuthResponse response = authService.login(request);
 
         // Assert
         assertNotNull(response);
-        assertEquals("mocked-jwt-token", response.token());
+        assertEquals("mocked-access-token", response.accessToken());
+        assertEquals("mocked-refresh-token", response.refreshToken());
+
+        // Verify the repository's save method was called exactly once
+        verify(refreshTokenRepository, times(1)).save(any(RefreshToken.class));
     }
 
     @Test
@@ -116,5 +130,62 @@ class AuthServiceImplTest {
 
         // Act & Assert
         assertThrows(InvalidUserCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void shouldReturnNewAccessTokenWhenRefreshTokenIsValid() {
+        // Arrange
+        String validTokenString = "valid-refresh-token";
+        // Create a fake token that expires 1 day from now
+        RefreshToken mockTokenEntity = RefreshToken.builder()
+                .id(1L)
+                .token(validTokenString)
+                .expiryDate(java.time.Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS))
+                .user(testUser)
+                .build();
+
+        when(refreshTokenRepository.findByToken(validTokenString)).thenReturn(Optional.of(mockTokenEntity));
+        when(jwtUtil.generateToken(eq("testuser"), anyList())).thenReturn("new-access-token");
+
+        // Act
+        AuthResponse response = authService.refreshToken(validTokenString);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("new-access-token", response.accessToken());
+        assertEquals(validTokenString, response.refreshToken()); // original refresh token is returned
+    }
+
+    @Test
+    void shouldThrowRefreshTokenNotFoundExceptionWhenRefreshTokenNotFound() {
+        // Arrange
+        String invalidToken = "fake-token";
+        when(refreshTokenRepository.findByToken(invalidToken)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(com.bank.authservice.exception.RefreshTokenNotFoundException.class,
+                () -> authService.refreshToken(invalidToken));
+    }
+
+    @Test
+    void shouldThrowRefreshTokenExpiredExceptionAndDeleteTokenWhenRefreshTokenIsExpired() {
+        // Arrange
+        String expiredTokenString = "expired-refresh-token";
+        // Create a fake token that expired 1 day ago
+        RefreshToken expiredTokenEntity = RefreshToken.builder()
+                .id(1L)
+                .token(expiredTokenString)
+                .expiryDate(java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
+                .user(testUser)
+                .build();
+
+        when(refreshTokenRepository.findByToken(expiredTokenString)).thenReturn(Optional.of(expiredTokenEntity));
+
+        // Act & Assert
+        assertThrows(com.bank.authservice.exception.RefreshTokenExpiredException.class,
+                () -> authService.refreshToken(expiredTokenString));
+
+        // Crucial check: verify that our code deleted the expired token from the DB!
+        verify(refreshTokenRepository, times(1)).delete(expiredTokenEntity);
     }
 }

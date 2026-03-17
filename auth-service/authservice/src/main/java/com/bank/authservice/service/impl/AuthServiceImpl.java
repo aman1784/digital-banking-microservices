@@ -96,4 +96,24 @@ public class AuthServiceImpl implements AuthService {
         return new AuthResponse(accessToken, refreshTokenString);
     }
 
+    @Transactional
+    @Override
+    public AuthResponse refreshToken(String requestRefreshToken) {
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(requestRefreshToken)
+                .orElseThrow(() -> new RefreshTokenNotFoundException("Refresh token is not in database!"));
+
+        if (refreshToken.getExpiryDate().compareTo(Instant.now()) < 0) {
+            refreshTokenRepository.delete(refreshToken);
+            throw new RefreshTokenExpiredException("Refresh token was expired. Please make a new SignIn request");
+        }
+
+        User user = refreshToken.getUser();
+        List<String> roleNames = user.getRoles().stream()
+                .map(Role::getName)
+                .toList();
+
+        String accessToken = jwtUtil.generateToken(user.getUsername(), roleNames);
+
+        return new AuthResponse(accessToken, requestRefreshToken);
+    }
 }
