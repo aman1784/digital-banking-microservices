@@ -3,6 +3,7 @@ package com.bank.authservice.controller;
 import com.bank.authservice.dto.AuthResponse;
 import com.bank.authservice.dto.LoginRequest;
 import com.bank.authservice.dto.RegisterRequest;
+import com.bank.authservice.dto.TokenRefreshRequest;
 import com.bank.authservice.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -31,5 +32,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         return new ResponseEntity<>(authService.login(request), HttpStatus.OK);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request.refreshToken()));
     }
 }

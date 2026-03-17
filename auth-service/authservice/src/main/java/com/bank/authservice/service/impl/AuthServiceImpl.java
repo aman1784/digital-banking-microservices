@@ -3,17 +3,23 @@ package com.bank.authservice.service.impl;
 import com.bank.authservice.dto.AuthResponse;
 import com.bank.authservice.dto.LoginRequest;
 import com.bank.authservice.dto.RegisterRequest;
+import com.bank.authservice.entity.RefreshToken;
 import com.bank.authservice.entity.Role;
 import com.bank.authservice.entity.User;
 import com.bank.authservice.exception.DuplicateUserExistsException;
 import com.bank.authservice.exception.InvalidUserCredentialsException;
+import com.bank.authservice.exception.RefreshTokenExpiredException;
+import com.bank.authservice.exception.RefreshTokenNotFoundException;
+import com.bank.authservice.repository.RefreshTokenRepository;
 import com.bank.authservice.repository.RoleRepository;
 import com.bank.authservice.repository.UserRepository;
 import com.bank.authservice.service.AuthService;
 import com.bank.authservice.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -24,12 +30,14 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder encoder;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public AuthServiceImpl(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder encoder, JwtUtil jwtUtil) {
+    public AuthServiceImpl(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder encoder, JwtUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.encoder = encoder;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Override
@@ -55,6 +63,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse login(LoginRequest request) {
 
         User user = userRepository.findByUsername(request.username())
@@ -69,9 +78,22 @@ public class AuthServiceImpl implements AuthService {
                 .map(Role::getName)  // ROLE_ADMIN, ROLE_USER
                 .toList();
 
-        String token = jwtUtil.generateToken(user.getUsername(), roleNames);
+        String accessToken = jwtUtil.generateToken(user.getUsername(), roleNames);
 
-        return new AuthResponse(token);
+        // Generate and save Refresh Token
+        String refreshTokenString = jwtUtil.generateRefreshToken(user.getUsername());
+
+        RefreshToken refreshToken = refreshTokenRepository.findByUser_Id(user.getId())
+                .orElse(new RefreshToken());
+
+        // Update the entity with the new data
+        refreshToken.setUser(user);
+        refreshToken.setToken(refreshTokenString);
+        refreshToken.setExpiryDate(Instant.now().plusMillis(jwtUtil.getRefreshExpiration()));
+
+        refreshTokenRepository.save(refreshToken);
+
+        return new AuthResponse(accessToken, refreshTokenString);
     }
 
 }
