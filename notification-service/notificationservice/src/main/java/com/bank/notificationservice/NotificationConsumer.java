@@ -8,13 +8,9 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class NotificationConsumer {
 
-    @KafkaListener(topics = "transaction-events", groupId = "notification-group-final")
+    @KafkaListener(topics = "transaction-events", groupId = "notification-group")
     public void consume(TransactionEvent event) {
         log.info("[NotificationConsumer][EVENT]: {}", event);
     }
 
-//    @KafkaListener(topics = "transaction-events", groupId = "debug-group")
-//    public void consume(String message) {
-//        log.info("[NotificationConsumer][RAW MESSAGE]: {}", message);
-//    }
 }
