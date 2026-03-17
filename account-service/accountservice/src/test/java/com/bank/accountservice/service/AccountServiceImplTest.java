@@ -1,4 +1,4 @@
-package com.bank.accountservice.service.impl;
+package com.bank.accountservice.service;
 
 import com.bank.accountservice.dto.BalanceResponse;
 import com.bank.accountservice.dto.CreateAccountRequest;
@@ -7,6 +7,7 @@ import com.bank.accountservice.enums.AccountStatus;
 import com.bank.accountservice.enums.AccountType;
 import com.bank.accountservice.exception.UnauthorizedAccountAccessException;
 import com.bank.accountservice.repository.AccountRepository;
+import com.bank.accountservice.service.impl.AccountServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -115,7 +116,7 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void shouldThrowUnauthorizedAccountAccessExceptionWhenUserNameDoesNotMatch() { // verify this test method
+    void shouldThrowUnauthorizedAccountAccessExceptionWhenUserNameDoesNotMatch() {
         // Arrange
         when(accountRepository.findByIdAndOwnerUsername(1L, TEST_USER)).thenReturn(Optional.empty());
 
