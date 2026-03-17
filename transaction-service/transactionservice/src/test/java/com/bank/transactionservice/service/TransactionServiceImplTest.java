@@ -71,7 +71,7 @@ class TransactionServiceImplTest {
     }
 
     @Test
-    void processDeposit_Success() {
+    void shouldReturnSuccessWhenProcessDepositSuccessfully() {
         // Arrange
         // When repository.save() is called, simply return the transaction that was passed into it.
         // This handles both the initial PENDING save and the subsequent SUCCESS save.
@@ -89,7 +89,7 @@ class TransactionServiceImplTest {
     }
 
     @Test
-    void processWithdraw_Success() {
+    void shouldReturnSuccessWhenProcessWithdrawSuccessfully() {
         // Arrange
         when(repository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -104,7 +104,7 @@ class TransactionServiceImplTest {
     }
 
     @Test
-    void getUserTransactions_ReturnsPagedResults() {
+    void ShouldReturnUserTransactions() {
         // Arrange
         int page = 0;
         int size = 10;
@@ -127,7 +127,7 @@ class TransactionServiceImplTest {
     }
 
     @Test
-    void getAccountTransactions_ReturnsPagedResults() {
+    void shouldReturnAccountTransactions() {
         // Arrange
         int page = 0;
         int size = 5;
