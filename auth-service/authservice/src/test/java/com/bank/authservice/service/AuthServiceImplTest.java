@@ -21,6 +21,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Set;
 
@@ -65,7 +67,7 @@ class AuthServiceImplTest {
 
     @Test
     void shouldRegisterUserWhenUserIsNew() {
-        // Arrange: Define the input and how the mocks should behave
+
         RegisterRequest request = new RegisterRequest("abhishek", "password123");
 
         when(userRepository.findByUsername("abhishek")).thenReturn(Optional.empty()); // User doesn't exist yet
@@ -73,10 +75,9 @@ class AuthServiceImplTest {
         when(encoder.encode("password123")).thenReturn("hashedPassword"); // Fake the encoding
         when(userRepository.save(any(User.class))).thenReturn(new User());
 
-        // Act: Call the method being tested
         assertDoesNotThrow(() -> authService.register(request));
 
-        // Assert: Verify the repository's save method was called exactly once
+
         verify(userRepository, times(1)).save(any(User.class));
     }
 
@@ -140,7 +141,7 @@ class AuthServiceImplTest {
         RefreshToken mockTokenEntity = RefreshToken.builder()
                 .id(1L)
                 .token(validTokenString)
-                .expiryDate(java.time.Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS))
+                .expiryDate(Instant.now().plus(1, ChronoUnit.DAYS))
                 .user(testUser)
                 .build();
 
@@ -175,7 +176,7 @@ class AuthServiceImplTest {
         RefreshToken expiredTokenEntity = RefreshToken.builder()
                 .id(1L)
                 .token(expiredTokenString)
-                .expiryDate(java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
+                .expiryDate(Instant.now().minus(1, ChronoUnit.DAYS))
                 .user(testUser)
                 .build();
 
